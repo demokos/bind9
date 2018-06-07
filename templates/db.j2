@@ -1,0 +1,13 @@
+$TTL 86400      ; 1 day
+@	IN SOA	{{ nameserver }}.{{ dn }}. {{ mail }}. (
+				{{ '%Y%m%d' | strftime }}{{ 99 |random}}; serial YYYYMMDDXX
+				{{ refresh|d('86400') }}      ; refresh
+				{{ retry|d('3600') }}       ; retry
+				{{ expire|d('2419200') }}    ; expire
+				{{ minimum|d('86400') }}      ; minimum
+				)
+;
+@       IN      NS      {{ nameserver }}.{{ dn }}.
+@       IN      MX      10 {{ nameserver }}.{{ dn }}.
+
+{{ nameserver }}     IN      A       {{ ip_nameserver }}

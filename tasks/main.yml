@@ -1,0 +1,56 @@
+---
+- name: install bind packages
+  apt: pkg={{ item }} state={{ bind_pkg_state }}
+  with_items: "{{ bind_pkgs }}"
+
+- name: setup zone directories
+  file: dest={{ bind_base_zones_path }}/{{ item }} state=directory owner={{ bind_user }} group={{ bind_group }} mode=0755
+  with_items:
+  - masters
+  - slaves
+
+- name: setup zones
+  template: src=named.conf.local.{{ item }}.j2 dest={{ bind_config_basepath }}/named.conf.local.{{ item }} owner={{ bind_user }} group={{ bind_group }} mode=0600
+  with_items:
+  - master
+  - slave
+  - forward
+  notify: reload bind
+
+- name: configure bind
+  copy: src=named.conf dest={{ bind_config_basepath }}/named.conf owner={{ bind_user }} group={{ bind_group }} mode=0600
+  notify: restart bind
+
+- name: configure bind options
+  template: src=named.conf.options.j2 dest={{ bind_config_basepath }}/named.conf.options owner={{ bind_user }} group={{ bind_group }} mode=0600
+  notify: restart bind
+
+- name: Debug array looping
+  debug:
+    msg: "{{bind_config_master_zones[item]}}"
+  with_items: "{{ bind_config_master_zones }}"
+
+- name: Set master zone file
+  template: src=db.j2 dest={{ bind_masterzones_path }}/db.{{ bind_config_master_zones[item].dn }} owner={{ bind_user }} group={{ bind_group }} mode=0644
+  # with_items: "{{ bind_config_master_zones | json_query('*.dn') }}"
+  with_items: "{{ bind_config_master_zones }}"
+  notify: restart bind
+  vars:
+    dn: "{{ bind_config_master_zones[item].dn }}"
+    nameserver: "{{ bind_config_master_zones[item].nameserver }}"
+    mail: "{{ bind_config_master_zones[item].mail }}"
+    refresh: "{{ bind_config_master_zones[item].refresh }}"
+    retry: "{{ bind_config_master_zones[item].retry }}"
+    expire: "{{ bind_config_master_zones[item].expire }}"
+    minimum: "{{ bind_config_master_zones[item].minimum }}"
+    ip_nameserver: "{{ bind_config_master_zones[item].ip_nameserver }}"
+
+- name: Copy master zone files
+  copy: src={{ bind_masterzones_path }}/db.{{ bind_config_master_zones[item].dn }} dest={{ bind_base_zones_path }}/{{bind_masterzones_path}} owner={{ bind_user }} group={{ bind_group }}
+  with_items: "{{ bind_config_master_zones }}"
+  notify: reload bind
+  tags: bind-zones
+  become: yes
+
+- name: start/stop bind service
+  service: name={{ bind_service_name }} state={{ bind_service_state }} enabled={{ bind_service_enabled }}
