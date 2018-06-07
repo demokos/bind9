@@ -3,11 +3,12 @@ galaxy_info:
   author: demokos
   license: MIT
   min_ansible_version: 1.4
+  description: bind9 server
 
   platforms:
   - name: Debian
     versions:
-    - 9
+    - all
   categories:
   - system
 
